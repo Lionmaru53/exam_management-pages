@@ -16,11 +16,6 @@
                border-top-color: #007bff; border-radius: 50%;
                animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    input { width: 100%; padding: 8px; border: 1px solid #ccc;
-            border-radius: 4px; box-sizing: border-box; }
-    button { margin-top: 10px; width: 100%; padding: 10px;
-             background: #06c755; color: #fff; border: none;
-             border-radius: 6px; cursor: pointer; font-size: 1em; }
   </style>
 </head>
 <body>
@@ -33,23 +28,6 @@
   function showError(msg) {
     document.getElementById('spinner').style.display = 'none';
     document.getElementById('msg').textContent = msg;
-  }
-
-  function showDevForm() {
-    document.getElementById('content').innerHTML = `
-      <p style="font-weight:bold; margin-bottom:8px;">開発用テストモード</p>
-      <p style="font-size:0.85em; color:#888; margin-bottom:16px;">
-        line_user_id を直接入力してテストできます
-      </p>
-      <input id="uid" type="text" placeholder="Uxxxxxxxxxxxxxxxxx">
-      <button onclick="goWithUserId()">表示する</button>`;
-  }
-
-  function goWithUserId(userId) {
-    userId = userId || (document.getElementById('uid') || {}).value || '';
-    userId = userId.trim();
-    if (!userId) { alert('userId を入力してください'); return; }
-    window.location.href = GAS_URL + '?userId=' + encodeURIComponent(userId);
   }
 
   window.onload = async function() {
@@ -65,15 +43,17 @@
           liff.login();
           return;
         }
-        // 外部ブラウザ + 未ログイン = LIFF URL 経由でなく GitHub Pages 直打ち → 開発用フォーム
-        showDevForm();
+        // 外部ブラウザ + 未ログイン = LIFF URL 経由でなく GitHub Pages 直打ち
+        showError('LINEアプリからアクセスしてください。');
         return;
       }
 
-      // ログイン済み（LINE アプリ内 / LIFF URL 経由の外部ブラウザ、どちらも共通）
+      // ログイン済み（LINE アプリ内 / LIFF URL 経由の外部ブラウザ、どちらも共通）。
+      // なりすまし対策: liff.getProfile().userId のような生の値はサーバーに渡さず、
+      // LINEが署名したIDトークンを渡してサーバー側で検証させる（Issue #53）。
       document.getElementById('msg').textContent = 'データを読み込み中...';
-      var profile = await liff.getProfile();
-      window.location.href = GAS_URL + '?userId=' + encodeURIComponent(profile.userId);
+      var idToken = liff.getIDToken();
+      window.location.href = GAS_URL + '?idToken=' + encodeURIComponent(idToken);
 
     } catch (err) {
       showError('エラー: ' + err.message);
